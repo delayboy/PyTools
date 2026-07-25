@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聊天数据可视化</title>
+    <link href="/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+        .sidebar {
+            height: 100vh;
+            background-color: #fff;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+        }
+        .chat-container {
+            height: 100vh;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+        }
+        .conversation-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .conversation-item:hover {
+            background-color: #f1f1f1;
+        }
+        .conversation-item.active {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        .message {
+            margin-bottom: 15px;
+            border-radius: 8px;
+            padding: 10px 15px;
+            max-width: 80%;
+        }
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: auto;
+            border-top-right-radius: 0;
+        }
+        .ai-message {
+            background-color: #f1f1f1;
+            margin-right: auto;
+            border-top-left-radius: 0;
+        }
+        .message-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .message-content {
+            line-height: 1.6;
+        }
+        .timestamp {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        .markdown-content img {
+            max-width: 100%;
+            height: auto;
+        }
+        .markdown-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .markdown-content table, .markdown-content th, .markdown-content td {
+            border: 1px solid #dee2e6;
+        }
+        .markdown-content th, .markdown-content td {
+            padding: 8px 12px;
+        }
+        .markdown-content pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .markdown-content code {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .conversation-title {
+            font-weight: bold;
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+            background-color: #f8f9fa;
+        }
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #6c757d;
+        }
+        .search-box {
+            padding: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 左侧边栏 -->
+            <div class="col-md-4 col-lg-3 sidebar p-0">
+                <div class="conversation-title d-flex justify-content-between align-items-center">
+                    <span>对话列表</span>
+                    <button class="btn btn-sm btn-outline-secondary" id="refresh-btn">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+                <div class="search-box">
+                    <input type="text" class="form-control form-control-sm" placeholder="搜索对话..." id="search-input">
+                </div>
+                <div id="conversation-list">
+                    {% for conv in conversations %}
+                    <div class="conversation-item" data-convid="{{ conv.id }}">
+                        <div class="d-flex justify-content-between">
+                            <strong>{{ conv.title }}</strong>
+                            <small class="timestamp">{{ conv.inserted_at[:10] }}</small>
+                        </div>
+                        <small class="text-muted">
+                            {{ conv.messages[0].content[:50] }}{% if conv.messages[0].content|length > 50 %}...{% endif %}
+                        </small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- 右侧聊天区域 -->
+            <div class="col-md-8 col-lg-9 chat-container p-0">
+                <div id="empty-state" class="empty-state">
+                    <i class="bi bi-chat-square-text" style="font-size: 3rem; margin-bottom: 15px;"></i>
+                    <h4>请从左侧选择对话</h4>
+                    <p class="text-muted">点击对话标题查看详细内容</p>
+                </div>
+                
+                <div id="chat-area" style="display: none;">
+                    <div class="conversation-title" id="current-conv-title"></div>
+                    <div class="p-3" id="messages-container">
+                        <!-- 消息将在这里动态加载 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/bootstrap.bundle.min.js"></script>
+    <script src="/marked.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const conversationItems = document.querySelectorAll('.conversation-item');
+            const emptyState = document.getElementById('empty-state');
+            const chatArea = document.getElementById('chat-area');
+            const messagesContainer = document.getElementById('messages-container');
+            const currentConvTitle = document.getElementById('current-conv-title');
+            const searchInput = document.getElementById('search-input');
+            
+            // 存储所有对话数据
+            const allConversations = {{ conversations|tojson|safe }};
+            
+            // 点击对话项加载对话
+            conversationItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    // 更新活动状态
+                    conversationItems.forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // 获取对话ID
+                    const convId = this.getAttribute('data-convid');
+                    
+                    // 查找对应的对话数据
+                    const conversation = allConversations.find(c => c.id === convId);
+                    if (!conversation) return;
+                    
+                    // 更新UI
+                    emptyState.style.display = 'none';
+                    chatArea.style.display = 'block';
+                    currentConvTitle.textContent = conversation.title;
+                    
+                    // 清空并加载消息
+                    messagesContainer.innerHTML = '';
+                    conversation.messages.forEach(message => {
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = `message ${message.is_user ? 'user-message' : 'ai-message'}`;
+                        
+                        const header = document.createElement('div');
+                        header.className = 'message-header';
+                        header.innerHTML = `
+                            <span>${message.is_user ? '用户' : 'AI助手'}</span>
+                            <small class="timestamp">${message.inserted_at}</small>
+                        `;
+                        
+                        const content = document.createElement('div');
+                        content.className = 'message-content markdown-content';
+                        content.innerHTML = message.content_html;
+                        
+                        messageDiv.appendChild(header);
+                        messageDiv.appendChild(content);
+                        messagesContainer.appendChild(messageDiv);
+                    });
+                    
+                    // 滚动到底部
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                });
+            });
+            
+            // 搜索功能
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                conversationItems.forEach(item => {
+                    const title = item.querySelector('strong').textContent.toLowerCase();
+                    const snippet = item.querySelector('.text-muted').textContent.toLowerCase();
+
+                    if (title.includes(searchTerm) || snippet.includes(searchTerm)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+            
+            // 默认选中第一个对话
+            if (conversationItems.length > 0) {
+                conversationItems[0].click();
+            }
+        });
+    </script>
+</body>
+</html>

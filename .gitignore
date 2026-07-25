@@ -1,0 +1,15 @@
+/__pycache__
+*.log
+/AutoAndroid/plugin
+/AutoAndroid/Template
+/AutoAndroid/TemplateBackUp
+/AutoAndroid/截屏apk(FilesManager调用了该app)
+/BaHelper/ba_template_pic
+/BaHelper/PaddleOcrModel
+/CvScriptHelper/cloud_templates
+/CvScriptHelper/Edge
+/CvScriptHelper/scrcpy-win64-v4.1
+CvScriptHelper/scrcpy-win64-v4.1.zip
+/CvScriptHelper/templates
+EfiDSEFix.exe
+暗黑4键鼠手柄工具打包.7z
