@@ -49,6 +49,34 @@ test_input = """
 麻烦处理:
 
 """
+AIM_GROUP = """
+数字孪生 开发
+网格化服务小组（催打卡）
+宋晓-北航、waytp、狂奔boy、黄悦心-E206...
+图形建模-控制制导-气动-动力-大气
+云制造 重点研发验收
+180262支部体育小组
+宋晓-北航、剑人、张峻凡、robinbird_go...
+网络故障系统
+信息对抗专业2022级开题 第三组
+研究生创新项目
+180262支部学习科技小组
+机理模型库-北航验收组
+
+河北OA对接集团档案系统
+四川公司档案系统接口问题
+集团档案-安全公司
+5.24啦啦啦
+6.14-6.15 happy happy happy
+北工大分部
+5.5下午一点逆河
+袁东海、陆启征18026215、周捷、狂奔boy、方禹焜06、..、切不着手荷卡布
+..️歌赛开场摄制组
+蔚来15个项目
+中国传统文化
+数字孪生-立项
+数字孪生-总体组-原型设计
+"""
 
 
 class WxStringClassifier(StringClassifier):
@@ -375,6 +403,8 @@ class ScriptArranger(BaseScriptArranger):
     def __init__(self, main_ui: MainUI):
         super().__init__()
         self.pc = PhoneController(main_ui)
+        self.pc.main_ui.set_simple_button_callback(self.stop_loop, "清空")
+        self.pc.main_ui.set_simple_button_callback(self.start_script_loop, "开始")
         self.__observation_shot_memory_xml_cache: Dict[str, bool] = {}  # 短期记忆，看一次更新一次，由脚本自动控制生命周期
         self._alm.remember_this_info("数智", "[搜索文本]")
 
@@ -396,32 +426,39 @@ class ScriptArranger(BaseScriptArranger):
 
     def loop_entry_point(self):
         # self.pc.capture_screen()
-        # self.pc.capture_hierarchy_root_xml()
-        self.pc.wait_for_debug()
+        time.sleep(0.5)  # 保证页面过渡完成
+        self.pc.capture_hierarchy_root_xml()
+        # self.pc.wait_for_debug()
         self._clear_cache()
         try:
+            # self.observe_and_do(
+            #     "手机控件有资源 com.tencent.mm:id/br1; 手机控件有资源 com.tencent.mm:id/actionbar_up_indicator",
+            #     "点击 com.tencent.mm:id/actionbar_up_indicator")
+            self.observe_and_do("手机控件有资源 com.tencent.mm:id/br1;", "遗忘 当前页面所有微信群名; 遗忘 之前了命中目标群聊;")
+            self.observe_and_do("手机控件有资源 com.tencent.mm:id/bkl;", "遗忘 当前页面所有微信群名; 遗忘 之前了命中目标群聊;")
+
             self.observe_and_do("当前是在微信主页; X题头是微信两个字",
                                 "遗忘 当前页面所有微信群名; 点击 左下角微信两个字")
-            self.observe_and_do("当前是在微信主页; X有_搜索放大镜", "向下滑动")
-            self.observe_and_do("当前是在微信主页; 题头是微信两个字; 有_搜索放大镜", "点击 搜索放大镜")
-            self.observe_and_do("手机控件有提示 搜索本地或网络结果; X手机控件有文本 [搜索文本]",
-                                "点击 搜索本地或网络结果; 输入 [搜索文本]")
-            self.observe_and_do(
-                "手机控件有提示 搜索本地或网络结果; 手机控件有文本 [搜索文本]; X手机控件有文本 更多群聊", "向上滑动")
-            self.observe_and_do("手机控件有提示 搜索本地或网络结果; 手机控件有文本 [搜索文本]; 手机控件有文本 更多群聊",
-                                "点击 更多群聊")
-            self.observe_and_do("X手机控件有提示 搜索本地或网络结果; 手机控件有文本 [搜索文本]; ",
-                                "记忆 当前页面所有微信群名")
-            self.observe_and_do("X手机控件有提示 搜索本地或网络结果; 手机控件有文本 [搜索文本]; X找到了目标群聊",
-                                "向上滑动")
-            self.observe_and_do("X手机控件有提示 搜索本地或网络结果; 手机控件有文本 [搜索文本]; 找到了目标群聊",
-                                "点击 目标群聊")
+            self.observe_and_do("当前是在微信主页; X有_更多扩展选项", "向下滑动")
+            self.observe_and_do("当前是在微信主页; 题头是微信两个字; 有_更多扩展选项",
+                                "点击 更多扩展选项; 遗忘 当前页面所有微信群名; 遗忘 之前了命中目标群聊;")
+            self.observe_and_do("手机控件有文本 选择一个已有的群; ", "点击 选择一个已有的群")
+            self.observe_and_do("手机控件有文本 选择群聊; ", "记忆 当前页面所有微信群名")
+            self.observe_and_do("手机控件有文本 选择群聊; X找到了目标群聊", "向上滑动")
+            self.observe_and_do("手机控件有文本 选择群聊; 找到了目标群聊; X长期记忆里有 之前了命中目标群聊",
+                                "记忆 之前了命中目标群聊;")
+            self.observe_and_do("手机控件有文本 选择群聊; 找到了目标群聊; 长期记忆里有 之前了命中目标群聊",
+                                "遗忘 之前了命中目标群聊; 点击 目标群聊")
+            self.observe_and_do("已经进入微信群聊; 手机控件有描述 聊天信息", "点击 聊天信息; 遗忘 当前页面所有微信群名")
             self.observe_and_do("已经进入微信群聊; 手机控件有描述 更多信息", "点击 更多信息; 遗忘 当前页面所有微信群名")
+            self.observe_and_do("手机控件有文本 群聊名称; X手机控件有文本 退出群聊", "向上滑动")
             self.observe_and_do("手机控件有文本 查找聊天记录; X手机控件有文本 退出群聊", "向上滑动")
             self.observe_and_do("手机控件有文本 查找聊天记录; 手机控件有文本 退出群聊", "点击 退出群聊")
-            self.observe_and_do("手机控件有文本 退出后其他群成员不会收到通知; 手机控件有文本 取消", "点击 取消")
+            self.observe_and_do("手机控件有文本 退出后其他群成员不会收到通知; 手机控件有文本 退出", "点击 退出")
             self.observe_and_do("当前在手机主页; 找到微信APP", "遗忘 当前页面所有微信群名; 点击 微信APP")
             self.observe_and_do("当前在手机主页; X找到微信APP", "遗忘 当前页面所有微信群名; 向右滑动")
+            self.observe_and_do("手机控件有文本 发起群聊; ", "点击 发起群聊")
+            self.observe_and_do("手机控件有资源 com.tencent.mm:id/b5i;", "点击 com.tencent.mm:id/b5i")
         except OverflowError:
             pass
 
@@ -440,6 +477,13 @@ class ScriptArranger(BaseScriptArranger):
         self._asm.remember_this_info(search.get_rect().get_middle(), "搜索放大镜")
         return True
 
+    def is_wechat_more(self):
+        search = self.pc.find_element_by_attr_dic({'NAF': 'true', 'resource-id': 'com.tencent.mm:id/plus_icon'})
+        if search is None:
+            return False
+        self._asm.remember_this_info(search.get_rect().get_middle(), "更多扩展选项")
+        return True
+
     def is_phone_xml_has_text(self, text: str, key: str):
         if text.__eq__("[搜索文本]"):
             text = self._alm.get_remember_info(text)
@@ -447,12 +491,14 @@ class ScriptArranger(BaseScriptArranger):
             key = 'hint'
         elif key.__eq__("描述"):
             key = 'content-desc'
+        elif key.__eq__("资源"):
+            key = 'resource-id'
         else:
             key = 'text'
         search = self.pc.find_element_by_attr_dic({key: text})
         if search is None:
             return False
-        print(search.get_attrib_dic())
+        # print(search.get_attrib_dic())
         self._asm.remember_this_info(search.get_rect().get_middle(), text)
         return True
 
@@ -476,17 +522,21 @@ class ScriptArranger(BaseScriptArranger):
 
     def is_wechat_find_aim_group(self):
         result = False
+        all_group_name = []
         if self._alm.if_remember_this_info("当前页面所有微信群名"):
             res_dic: Dict[str, PyRect] = self._alm.get_remember_info("当前页面所有微信群名")
-            for aim_text in ["跟进"]:
+            all_group_name = [group_name for group_name in res_dic.keys()]
+            for aim_text in AIM_GROUP.split("\n"):
                 for group_name in res_dic.keys():
-                    if group_name.__contains__(aim_text):
+                    if aim_text.__len__() >= 2 and group_name.__contains__(aim_text):
                         rect: PyRect = res_dic[group_name]
                         result = (2400 - rect.top) > 50  # 保证目标群聊按钮落在屏幕中间
                         self._asm.remember_this_info((rect.left, rect.top), "目标群聊")
                         break
                 if result:
                     break
+        if not result:
+            self.pc.main_ui.show_text("\n".join(all_group_name))
         return result
 
     def is_wechat_has_2_days_chat_history(self):
@@ -506,7 +556,8 @@ class ScriptArranger(BaseScriptArranger):
             switch_name = args[1]
             if switch_name.__eq__("当前页面所有微信群名"):
                 save_at_least_one = False  # 至少多存了一个群名称，说明操作成功了，否则可能是屏幕卡住了
-                for ele in self.pc.find_elements_by_resource_id("com.tencent.mm:id/odf"):
+                self.pc.capture_hierarchy_root_xml()
+                for ele in self.pc.find_elements_by_resource_id("com.tencent.mm:id/gtz"):
                     text = ele.get_text()
                     if not self._alm.if_remember_this_info(switch_name, text):
                         save_at_least_one = True
@@ -526,6 +577,8 @@ class ScriptArranger(BaseScriptArranger):
                             logger.debug(f"当前一共找到{now_order_num}个订单,新加入的订单信息为:{text_dic}")
                             save_at_least_one = True
                 return save_at_least_one
+            elif switch_name.__eq__("之前了命中目标群聊"):
+                self._alm.remember_this_info(1, switch_name)
         elif action_alias_name.__contains__("滑动"):
             self.pc.swipe(action_alias_name)
         elif action_alias_name.__eq__("打开后台视图"):
@@ -534,9 +587,11 @@ class ScriptArranger(BaseScriptArranger):
             pass
         elif action_alias_name.__eq__("点击"):
             observation_alias_name = args[1]
+            # if observation_alias_name.__eq__("退出"):
+            #     self.pc.wait_for_debug()
             x, y = self._asm.get_remember_info(observation_alias_name)
             self.pc.click(x, y)
-            print("click aa")
+            # print("click aa")
         elif action_alias_name.__eq__("输入"):
             self.pc.send_keys(self._alm.get_remember_info(args[1]) if args[1].__eq__("[搜索文本]") else args[1])
         elif action_alias_name.__eq__("遗忘"):
@@ -551,6 +606,9 @@ class ScriptArranger(BaseScriptArranger):
             text = args[1]
             result = self.is_phone_xml_has_text(text, observation_alias_name.replace("手机控件有", ""))
             return result
+        elif observation_alias_name.__eq__("长期记忆里有"):
+            text = args[1]
+            return self._alm.if_remember_this_info(text)
         if self.__observation_shot_memory_xml_cache.__contains__(observation_alias_name):
             result = self.__observation_shot_memory_xml_cache[observation_alias_name]
             return result
@@ -562,6 +620,8 @@ class ScriptArranger(BaseScriptArranger):
             result = self.is_in_wechat_homepage()
         elif observation_alias_name.__eq__("有_搜索放大镜"):
             result = self.is_wechat_search()
+        elif observation_alias_name.__eq__("有_更多扩展选项"):
+            result = self.is_wechat_more()
         elif observation_alias_name.__eq__("保存的群名包含文件传输助手"):
             result = self._alm.if_remember_this_info("当前页面所有微信群名", "文件传输助手")
         elif observation_alias_name.__eq__("题头是微信两个字"):
