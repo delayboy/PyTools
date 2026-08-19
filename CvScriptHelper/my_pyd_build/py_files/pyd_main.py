@@ -3,7 +3,6 @@ from __future__ import annotations  # 使用高级注解器，
 
 from PyTools.MyAwesomeTool.MyUtil import auto_patch_python, get_file_list
 from PyTools.MyAwesomeTool.MyBoxLayout import ask_choice
-from patch import main
 from PyTools.MyAwesomeTool.PyUseCPlus import Rect, PyRect, MainUI, MyOpenCv, start_thread, build_logger
 
 
