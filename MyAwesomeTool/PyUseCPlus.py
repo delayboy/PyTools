@@ -9,6 +9,7 @@ import threading
 import time
 import os
 import cv2
+import adbutils
 import datetime
 
 import PyTools.MyAwesomeTool.MyProcessHelper as procHelper
@@ -289,7 +290,7 @@ class MyOpenCv:
     @staticmethod
     def fill_black_to_src(img: np.ndarray, input_rect: Rect) -> np.ndarray:
         rect = input_rect.to_array()
-        if img.shape.__len__() >= 3:
+        if len(img.shape) >= 3:
             img[rect.top:rect.bottom, rect.left:rect.right, :] = 0
         else:
             img[rect.top:rect.bottom, rect.left:rect.right] = 0
@@ -326,7 +327,7 @@ class MyOpenCv:
 
     @staticmethod
     def get_channel_num(img: np.ndarray):
-        if img.shape.__len__() == 3:
+        if len(img.shape) == 3:
             channel = img.shape[2]
             return channel
         else:
@@ -365,7 +366,7 @@ class MyOpenCv:
         res_mat = cv2.addWeighted(sobel_x, 0.5, sobel_y, 0.5, 0)
         if rect is not None:
             input_mat = src_mat.copy()
-            if input_mat.shape.__len__() >= 3:
+            if len(input_mat.shape) >= 3:
                 input_mat[rect.top:rect.bottom, rect.left:rect.right, :] = res_mat
             else:
                 input_mat[rect.top:rect.bottom, rect.left:rect.right] = res_mat
@@ -375,7 +376,8 @@ class MyOpenCv:
         return res_mat
 
     @staticmethod
-    def match_single_score_and_pos(src_mat: np.ndarray, temp_mat: np.ndarray) -> Tuple[float, Sequence[int, int]]:
+    def __inner_match_single_score_and_pos(src_mat: np.ndarray, temp_mat: np.ndarray) -> \
+            Tuple[float, Sequence[int, int]]:
         res, match_method = MyOpenCv.match_template(src_mat, temp_mat)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         if match_method == cv2.TM_SQDIFF_NORMED or match_method == cv2.TM_SQDIFF:
@@ -384,8 +386,39 @@ class MyOpenCv:
             return max_val, max_loc
 
     @staticmethod
+    def match_single_score_and_pos(src_mat: np.ndarray, temp_mat: np.ndarray) -> Tuple[float, Sequence[int, int]]:
+        src_channel_num = MyOpenCv.get_channel_num(src_mat)
+        temp_channel_num = MyOpenCv.get_channel_num(temp_mat)
+
+        if src_channel_num == 4:
+            src_mat = MyOpenCv.extract_rgb(src_mat)
+            src_channel_num = 3
+
+        if temp_channel_num == 4 and src_channel_num >= 3:
+            score, loc = MyOpenCv.match_single_alpha_score_and_pos(src_mat, temp_mat)
+        else:
+            score, loc = MyOpenCv.__inner_match_single_score_and_pos(src_mat, temp_mat)
+        return score, loc
+
+    @staticmethod
+    def match_single_score_and_post_many_times(src_mat: np.ndarray, temp_mat: np.ndarray, max_try_times: int,
+                                               threshold: float) -> List[Tuple[float, Sequence[int, int]]]:
+        src_with_black = src_mat.copy()
+        w, h = MyOpenCv.get_image_size(temp_mat)
+        signal_locs: List[Tuple[float, Sequence[int, int]]] = []  # : List[Tuple[int, int]]
+        for _ in range(max_try_times):
+            chosen_score, chosen_loc = MyOpenCv.match_single_score_and_pos(src_with_black, temp_mat)
+            if chosen_score > threshold:
+                signal_locs.append((chosen_score, chosen_loc))
+                fill_rect = Rect(chosen_loc[0], chosen_loc[1], chosen_loc[0] + w, chosen_loc[1] + h)
+                src_with_black = MyOpenCv.fill_black_to_src(src_with_black, fill_rect)
+            else:
+                break
+        return signal_locs
+
+    @staticmethod
     def match_single_alpha_score_and_pos(src_mat: np.ndarray, temp_mat: np.ndarray) -> Tuple[float, Sequence[int, int]]:
-        score, loc = MyOpenCv.match_single_score_and_pos(src_mat, temp_mat)
+        score, loc = MyOpenCv.__inner_match_single_score_and_pos(src_mat, temp_mat)
         x1, y1 = loc
         x, y = MyOpenCv.get_image_size(temp_mat)
         x2 = x1 + x
@@ -406,7 +439,7 @@ class MyOpenCv:
         zoom_image2 = (
                 zoom_bgr.astype(np.float32) * alpha_z + white_bg_z.astype(np.float32) * (1 - alpha_z)).astype(
             np.uint8)
-        score, _ = MyOpenCv.match_single_score_and_pos(cut_raw_img2, zoom_image2)
+        score, _ = MyOpenCv.__inner_match_single_score_and_pos(cut_raw_img2, zoom_image2)
         return score, loc
 
     @staticmethod
@@ -551,7 +584,7 @@ class MainUI(MainUIBase):
             if self.get_cache_img() is not None and (offset_y != 0 or offset_x != 0):
                 rect = MyOpenCv.get_real_rect_by_percent_rect(self.get_cache_img(), self.__rect)
                 img2 = MyOpenCv.draw_rect(self.get_cache_img(), rect)
-                self.show_image(img2, self.__rect.__str__() + "\n" + rect.__str__(), use_cache=False)
+                self.show_image(img2, str(self.__rect) + "\n" + str(rect), use_cache=False)
 
     def main_loop_entry_point(self):
         self.__main_loop_func(self)
@@ -749,7 +782,6 @@ class AndroidApp:
         self.client = None
         self.isRun = False
         self.use_client = use_client
-        self.device_name = device_name
         self.try_reconnect_client()
         self.now_index = 0
 
@@ -759,17 +791,23 @@ class AndroidApp:
     def try_reconnect_client(self):
         if self.use_client and (not self.client_is_alive()):
             self.client = None
-            plugin_root = os.path.abspath("./scrcpy-win64-v2.1.1")
-            adb = "adb.exe"  # os.path.join(plugin_root, "adb.exe")
-            cmd_str = "\"{}\" devices".format(adb)
-            print(InteractiveCmd(cmd_str).get_collect_output())
-            cmd_str = "\"{}\" -s {} forward tcp:80 tcp:9999".format(adb, self.device_name)
-            print(InteractiveCmd(cmd_str).get_collect_output())
-            cmd_str = "\"{}\"  forward --list".format(adb)  # 删除监听adb forward --remove tcp:6006
-            output = InteractiveCmd(cmd_str).get_collect_output()
-            if output.__contains__("tcp"):
-                self.client = TcpClient(DefaultTcpClientHandler(), server_port=80)
-                print("tcp服务成功开启")
+            try:
+                adb_device = adbutils.adb.device()
+                adb = adbutils.adb_path()  # os.path.join(plugin_root, "adb.exe")
+                cmd_str = "\"{}\" devices".format(adb)
+                print(InteractiveCmd(cmd_str).get_collect_output())
+                adb_device.forward("tcp:80", "tcp:9999")
+                # 查看所有转发的端口
+                forwards = adb_device.forward_list()
+                print(f"当前转发列表: {forwards}")
+                # 判断转发是否成功
+                if any('tcp' in str(f) for f in forwards):
+                    self.client = TcpClient(DefaultTcpClientHandler(), server_port=80)
+                    print("tcp服务成功开启")
+                else:
+                    print("端口转发失败")
+            except adbutils.AdbError as e:
+                print(f"AndroidApp连接失败: {e}")
 
     def show_text(self, text: str):
         if self.client is not None:
@@ -778,7 +816,7 @@ class AndroidApp:
 
     def show_image(self, img: np.ndarray, text: str = "default"):
         if self.client is not None:
-            if not text.__eq__(""):
+            if text != "":
                 img = MyOpenCv.draw_text(img, text)
             pk = PackageHeader.init_binary_header(image_to_binary(img))
             self.client.async_queue_send_pk(pk)
