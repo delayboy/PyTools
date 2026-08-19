@@ -123,7 +123,7 @@ class AudioRecorder:
         # self.gpt_client.go_url("https://chatgpt.com/")
         self.client = None
         self.record_speaker = False
-        if True:  # USE_SERVER and USE_MAX_FUNC
+        if USE_SERVER and USE_MAX_FUNC:  # USE_SERVER and USE_MAX_FUNC
             self.client = TcpClient(RecordTcpClientHandler(self.gpt_client, my_dll, self.recv_callback), "127.0.0.1",
                                     5454, keep_alive=True)  # , 'gpt.delayboy.cn', 5353
         self.is_record_event = threading.Event()
@@ -626,19 +626,39 @@ class TransparentMainUI:
                 print("ocr_loop发生错误:", e)
 
     def blue_archive(self):
+        esc_over = False
         while self.on_click_loop:  # 蔚蓝档案过剧情脚本
             over = False
-            for each_pic in ["Agree", "Agree2", "Watch", "continue", "Skip", "Fight", "Auto", "失败确认"]:
-                img = self.mainManager.capture_window(None)
+            img = self.mainManager.capture_window(None)
+            for each_pic in ["任务开始", "Agree", "Agree2", "Watch", "continue", "Skip", "Fight", "Auto", "失败确认"]:
                 if self.auto_find_ui_and_click(img, f"蔚蓝档案自动化/{each_pic}.png", 0.90, 1, True):
                     over = True
                     break
+            temp_mat = MyOpenCv.cv_imread("蔚蓝档案自动化/Lock.png")
+            signal_locs = MyOpenCv.match_single_score_and_post_many_times(img, temp_mat, 4, 0.9)
+
+            if len(signal_locs) > 0:
+                over = True
+                # 按y值排序
+                sorted_locs = sorted(signal_locs, key=lambda each_x: each_x[1][1])
+                # 取最小的
+                score, (x, y) = sorted_locs[0]
+                self.mainManager.myDll.set_cursor_pos(x, y - 50)
+                self.mainManager.myDll.send_mouse_down(True)
+                time.sleep(0.01)
+                self.mainManager.myDll.send_mouse_down(False)
+                time.sleep(0.01)
+
             if not over:
                 self.mainManager.click_point_with_wnd_percent(0.42, 0.21)
                 if not self.auto_find_ui_and_click(img, f"蔚蓝档案自动化/Auto2.png", 0.90, 1, False):
-                    self.mainManager.send_key_code(True, 27)
-                    time.sleep(0.1)
-                    self.mainManager.send_key_code(False, 27)
+                    if not esc_over:
+                        self.mainManager.send_key_code(True, 27)
+                        time.sleep(0.1)
+                        self.mainManager.send_key_code(False, 27)
+                        esc_over = True  # 最多按一次
+            else:
+                esc_over = False
             time.sleep(0.5)
 
     def real_time_hook_callback(self, pk: HookPackage) -> int:
