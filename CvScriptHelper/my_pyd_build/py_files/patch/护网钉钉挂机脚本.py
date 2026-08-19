@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import ctypes
 import os.path
 import threading
 import time
@@ -24,11 +25,13 @@ import wave
 import requests
 import math
 from datetime import datetime, timedelta
+
 auto.GetForegroundControl()
 # 或者检查locale是否支持UTF-8
 locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 USE_SERVER = False
 USE_MAX_FUNC = False
+
 
 class Speaker:
     def __init__(self):
@@ -57,8 +60,6 @@ class Speaker:
         self.playing_event = threading.Event()
         self.playing_event.set()
 
-
-
     # 指定要播放的.wav文件
     def play_wave(self, wav_file="output.wav"):
         self.playing_event.clear()
@@ -75,9 +76,6 @@ class Speaker:
         print("播放完毕")
         self.playing_event.set()
 
-   
-
-
     # 打开.wav文件并读取其参数
     def get_wave_arg(self, wav_file="output.wav"):
         with wave.open(wav_file, 'rb') as wf:
@@ -91,6 +89,7 @@ class Speaker:
         self.stream.stop_stream()
         self.stream.close()
         self.p_audio.terminate()
+
 
 def hai_you_str_format(intput_str: str) -> str:
     return intput_str
@@ -141,9 +140,6 @@ def copy_ui(mask: bool) -> str:
         if not line == "":
             res += line + "\n"
     return res
-
-
-
 
 
 def split_string(s, chunk_size):
@@ -224,7 +220,7 @@ class TransparentMainUI:
         self.__late_callback_signal = threading.Event()
         self.my_dll: MyDll = MyDll.MyDll()
         self.on_click_loop = False
-        self.pre_click_hour=-1
+        self.pre_click_hour = -1
         self.sp = Speaker()
         self.mainManager = WinManager(self.my_dll, "")
 
@@ -272,14 +268,51 @@ class TransparentMainUI:
         copy_to_clipboard(question)
         self.__late_callback_signal.set()
 
-
     def refresh_window(self):
         if self.drawManager is not None:
             self.drawManager.refresh_window(None)
-    
+
+    def set_thread_execution_state(self, state_flags):
+        """设置线程执行状态以防止休眠"""
+        return ctypes.windll.kernel32.SetThreadExecutionState(state_flags)
+
+    def simulate_activity(self):
+        """
+        模拟用户活动
+        使用三种方法确保屏幕保持唤醒
+        """
+        try:
+            # 方法0：直接结束 Bubbles 屏保进程（最可靠）
+            os.system("taskkill /f /im Bubbles.scr")
+            time.sleep(1.5)
+            # 方法1：重置系统空闲计时器
+            # 发送一个假的键盘输入
+            user32 = ctypes.windll.user32
+            user32.keybd_event(0, 0, 0, 0)
+            # 相对移动（向右移动100像素，向下移动50像素）
+            time.sleep(0.5)
+            user32.mouse_event(0x0001, 100, 50, 0, 0)
+            time.sleep(0.5)
+            # 移回原位：向左移动100，向上移动50
+            user32.mouse_event(0x0001, -100, -50, 0, 0)
+            time.sleep(0.5)
+            # ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED
+            es_continuous = 0x80000000
+            es_system_required = 0x00000001
+            es_display_required = 0x00000002
+            # 方法2：阻止系统进入休眠状态（但不阻止屏保）
+            # 保持显示唤醒但不阻止屏保
+            self.set_thread_execution_state(
+                es_continuous |
+                es_display_required
+            )
+
+        except Exception as e:
+            print(f"模拟活动时出错: {e}")
+
     def click_loop(self):
         os.system("explorer.exe C:\Windows\System32\Bubbles.scr")
-        time.sleep(1)
+        time.sleep(5)
         while self.on_click_loop:
             now = datetime.now()
 
@@ -287,51 +320,45 @@ class TransparentMainUI:
             img = self.mainManager.capture_window(None)
             score, loc = MyOpenCv.match_single_score_and_pos(img, temp_mat)
             try:
-                res = requests.request(url="https://www.baidu.com",method="get")
-                is_connect = res.status_code==200
+                res = requests.request(url="https://www.baidu.com", method="get")
+                is_connect = res.status_code == 200
             except Exception as e:
                 is_connect = False
-                   
+
             if score < 0.95 or not is_connect:
                 print("钉钉页面异常报警")
-                self.sp.play_wave()   
+                self.sp.play_wave()
             else:
-                print("上次填表时间为：",now.hour,"脚本执行中",now)
+                print("上次填表时间为：", now.hour, "脚本执行中", now)
 
                 if not now.hour == self.pre_click_hour:
                     print("时间更新执行填表脚本")
                     self.pre_click_hour = now.hour
-                    self.my_dll.send_key_down(True, MyDll.VK_F1+2) #唤醒屏幕
-                    time.sleep(0.5)
-                    self.my_dll.send_key_down(False, MyDll.VK_F1+2) #唤醒屏幕
-                    time.sleep(1)
+                    self.simulate_activity()  # 唤醒屏幕
+                    time.sleep(3)
                     self.my_dll.send_key_down(True, 39)
                     time.sleep(0.5)
                     self.my_dll.send_key_down(False, 39)
                     self.my_dll.send_key("无异常")
                     time.sleep(0.5)
-                    self.my_dll.send_key_down(True, 39) # left
+                    self.my_dll.send_key_down(True, 39)  # left
                     time.sleep(0.5)
                     self.my_dll.send_key_down(False, 39)
                     self.my_dll.send_key("赵云浩")
                     time.sleep(0.5)
-                    self.my_dll.send_key_down(True, 162) # left
+                    self.my_dll.send_key_down(True, 162)  # left
                     time.sleep(0.1)
-                    self.my_dll.send_key_down(True, ord("S")) # left
+                    self.my_dll.send_key_down(True, ord("S"))  # left
                     time.sleep(0.1)
-                    self.my_dll.send_key_down(False, ord("S")) # left
+                    self.my_dll.send_key_down(False, ord("S"))  # left
                     time.sleep(0.1)
                     self.my_dll.send_key_down(False, 162)
                     os.system("explorer.exe C:\Windows\System32\Bubbles.scr")
             time.sleep(5)
-       
-
-
 
     def paint_callback(self, hdc):
         if self.drawManager is None:
             return
-        
 
     def async_hook_callback(self):
         while True:
@@ -352,19 +379,18 @@ class TransparentMainUI:
             #         time.sleep(0.2)
             #     self.my_dll.send_key(chunk)
             #     time.sleep(0.01)
-            
+
             if self.on_click_loop:
                 self.on_click_loop = False
             else:
                 print("start loop")
                 self.on_click_loop = True
-                start_thread(self.click_loop,())
-           
+                start_thread(self.click_loop, ())
 
     def real_time_hook_callback(self, pk: HookPackage) -> int:
         # print(pk.code)
         if pk.wParam == MyDll.WM_KEYDOWN:
-            if pk.code == MyDll.VK_F1:#or pk.code==39
+            if pk.code == MyDll.VK_F1:  # or pk.code==39
                 self.capture_stage = not self.capture_stage
                 self.option_code = 'begin_loop'
                 self.__late_callback_signal.set()
@@ -373,8 +399,6 @@ class TransparentMainUI:
 
     def loop(self):
         self.my_dll.message_loop()
-
-
 
 
 def main(patch_md5: str, patch_path: str):

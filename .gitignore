@@ -13,3 +13,4 @@ CvScriptHelper/scrcpy-win64-v4.1.zip
 /CvScriptHelper/templates
 EfiDSEFix.exe
 暗黑4键鼠手柄工具打包.7z
+*.pyc
