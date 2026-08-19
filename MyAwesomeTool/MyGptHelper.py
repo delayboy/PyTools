@@ -70,11 +70,11 @@ class ChatGLM:
             yield now_c
 
 
-# sk-aaaaa
+# sk-xxxx
 
 class ChatGPT:
     def __init__(self, system_prompt="Serve me as a writing and programming assistant."):
-        openai.api_key = "sk-aaaaaa"  # 将第二步获取的密钥填写到这里
+        openai.api_key = "sk-xxxx"  # 将第二步获取的密钥填写到这里
         self.proxies = {
             #          [协议]://  [地址]  :[端口]
             "http": "http://localhost:23457",  # 再例如  "http":  "http://127.0.0.1:7890",
@@ -145,9 +145,9 @@ class ChatGPT:
 
 class DeepSeekChat:
     def __init__(self, system_prompt="Serve me as a writing and programming assistant.",
-                 api_key="YOUR_DEEPSEEK_API_KEY"):
+                 api_key="YOUR_DEEPSEEK_API_KEY", base_url="https://api.deepseek.com/v1/chat/completions"):
         self.api_key = api_key
-        self.base_url = "https://api.deepseek.com/v1/chat/completions"
+        self.base_url = base_url
         self.system_prompt = system_prompt
 
         # 可选：代理设置（格式与 OpenAI 示例类似）
@@ -178,7 +178,8 @@ class DeepSeekChat:
         messages.append(what_i_ask_now)
         return messages
 
-    def chat_with_deepseek(self, query: str, top_p=1.0, temperature=0.03, history=None, **kwargs):
+    def chat_with_deepseek(self, query: str, top_p=1.0, temperature=0.03, history=None, model="deepseek-chat",
+                           **kwargs):
         start_time = time.time()
         messages = self.generate_message_payload(query, history)
 
@@ -188,7 +189,7 @@ class DeepSeekChat:
         }
 
         data = {
-            "model": "deepseek-chat",
+            "model": model,
             "messages": messages,
             "top_p": top_p,
             "temperature": temperature,
@@ -208,6 +209,8 @@ class DeepSeekChat:
         print(f'latency {response_time - start_time:.2f} s -> response')
 
         s = ""
+        reasoning = ""
+        in_reasoning = False
         for line in response.iter_lines():
             if line:
                 line = line.decode('utf-8')
@@ -218,8 +221,18 @@ class DeepSeekChat:
                     try:
                         chunk = json.loads(line)
                         delta = chunk["choices"][0]["delta"]
+                        if "reasoning_content" in delta:
+                            rc = delta["reasoning_content"]
+                            if not in_reasoning:
+                                print("【思考过程】", end='')
+                                in_reasoning = True
+                            print(rc, end='')
+                            reasoning += rc
                         if "content" in delta:
                             content = delta["content"]
+                            if in_reasoning and len(content) > 1:
+                                print(f"\n【思考结束】\n", end='')
+                                in_reasoning = False
                             print(content, end='')
                             s += content
                             yield content
@@ -246,7 +259,7 @@ def gpt_tcp_server_example():
 
 
 def ask_deepseek_example(question: str = "推荐一道简单的菜") -> str:
-    deepseek = DeepSeekChat(api_key="sk-aaaaa")
+    deepseek = DeepSeekChat(api_key="sk-xxxx")
 
     # 流式输出示例
     print("DeepSeek: ", end="")
@@ -259,9 +272,39 @@ def ask_deepseek_example(question: str = "推荐一道简单的菜") -> str:
     return full_response
 
 
+def ask_glm_example(question: str = "推荐一道简单的菜") -> str:
+    deepseek = DeepSeekChat(api_key="xxx.xxx",
+                            base_url="https://api.z.ai/api/coding/paas/v4/chat/completions")
+
+    # 流式输出示例
+    print("DeepSeek: ", end="")
+    chunks = []
+    for chunk in deepseek.chat_with_deepseek(question, model="glm-5-turbo"):
+        chunks.append(chunk)
+
+    full_response = ''.join(chunks)
+    print(f"\n\n累积的完整回答: {full_response}")
+    return full_response
+
+
+def ask_tencent_example(question: str = "推荐一道简单的菜") -> str:
+    deepseek = DeepSeekChat(api_key="sk-tp-xxx",
+                            base_url="https://api.lkeap.cloud.tencent.com/plan/v3/chat/completions")
+
+    # 流式输出示例
+    print("DeepSeek: ", end="")
+    chunks = []
+    for chunk in deepseek.chat_with_deepseek(question, model="deepseek-v4-flash-202605"):
+        chunks.append(chunk)
+
+    full_response = ''.join(chunks)
+    print(f"\n\n累积的完整回答: {full_response}")
+    return full_response
+
+
 if __name__ == '__main__':
     # engine = GptTcpClientEngine()
     # while True:
     #     a = input('提问:')
     #     engine.chat_with_gpt(a)
-    ask_deepseek_example()
+    ask_tencent_example()
