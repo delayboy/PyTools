@@ -630,7 +630,7 @@ class TransparentMainUI:
         while self.on_click_loop:  # 蔚蓝档案过剧情脚本
             over = False
             img = self.mainManager.capture_window(None)
-            for each_pic in ["任务开始", "Agree", "Agree2", "Watch", "continue", "Skip", "Fight", "Auto", "失败确认"]:
+            for each_pic in ["任务开始","MENU", "Agree", "Agree2", "Watch", "continue", "Skip", "Fight", "Auto", "失败确认"]:
                 if self.auto_find_ui_and_click(img, f"蔚蓝档案自动化/{each_pic}.png", 0.90, 1, True):
                     over = True
                     break
@@ -643,7 +643,7 @@ class TransparentMainUI:
                 sorted_locs = sorted(signal_locs, key=lambda each_x: each_x[1][1])
                 # 取最小的
                 score, (x, y) = sorted_locs[0]
-                self.mainManager.myDll.set_cursor_pos(x, y - 50)
+                self.mainManager.myDll.set_cursor_pos(x + 3, y - 70)
                 self.mainManager.myDll.send_mouse_down(True)
                 time.sleep(0.01)
                 self.mainManager.myDll.send_mouse_down(False)

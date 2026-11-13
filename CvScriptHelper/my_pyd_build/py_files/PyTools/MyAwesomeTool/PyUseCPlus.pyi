@@ -14,6 +14,7 @@ from PyTools.MyAwesomeTool.MyUtil import auto_patch_python
 from PyTools.MyAwesomeTool.MyUtil import build_logger
 from PyTools.MyAwesomeTool.MyUtil import start_thread
 from __future__ import annotations
+import adbutils as adbutils
 import base64 as base64
 import ctypes as ctypes
 import cv2 as cv2
@@ -27,7 +28,7 @@ import time as time
 import typing
 from typing import Generic
 from typing import TypeVar
-__all__ = ['AndroidApp', 'DefaultTcpClientHandler', 'Generic', 'InteractiveCmd', 'MainUI', 'MainUIBase', 'MyDllLib', 'MyFileEditor', 'MyOpenCv', 'PackageHeader', 'PyImagePackage', 'PyRect', 'Rect', 'TcpClient', 'TypeVar', 'WinManager', 'auto_patch_python', 'base64', 'base64_to_image', 'binary_arr_to_image', 'binary_to_image', 'build_logger', 'ctypes', 'cv2', 'datetime', 'image_to_base64', 'image_to_binary', 'image_to_binary_arr', 'main_loop', 'np', 'os', 'procHelper', 'random', 'smart_guess_file_or_link', 'start_thread', 'this_process', 'threading', 'time']
+__all__ = ['AndroidApp', 'DefaultTcpClientHandler', 'Generic', 'InteractiveCmd', 'MainUI', 'MainUIBase', 'MyDllLib', 'MyFileEditor', 'MyOpenCv', 'PackageHeader', 'PyImagePackage', 'PyRect', 'Rect', 'TcpClient', 'TypeVar', 'WinManager', 'adbutils', 'auto_patch_python', 'base64', 'base64_to_image', 'binary_arr_to_image', 'binary_to_image', 'build_logger', 'ctypes', 'cv2', 'datetime', 'image_to_base64', 'image_to_binary', 'image_to_binary_arr', 'main_loop', 'np', 'os', 'procHelper', 'random', 'smart_guess_file_or_link', 'start_thread', 'this_process', 'threading', 'time']
 class AndroidApp:
     def __init__(self, use_client: bool = False, device_name: str = 'df044cd3'):
         ...
@@ -66,6 +67,9 @@ class MainUI(PyTools.MyAwesomeTool.MyBoxLayout.MainUIBase):
     def set_user_key_code_realtime_callback(self, callback: typing.Callable[[MyDllLib.HookPackage], bool]):
         ...
 class MyOpenCv:
+    @staticmethod
+    def _MyOpenCv__inner_match_single_score_and_pos(src_mat: np.ndarray, temp_mat: np.ndarray) -> tuple[float, typing.Sequence[int, int]]:
+        ...
     @staticmethod
     def add_alpha_channel_if_needed(img: np.ndarray) -> np.ndarray:
         ...
@@ -122,6 +126,9 @@ class MyOpenCv:
         ...
     @staticmethod
     def match_single_score_and_pos(src_mat: np.ndarray, temp_mat: np.ndarray) -> tuple[float, typing.Sequence[int, int]]:
+        ...
+    @staticmethod
+    def match_single_score_and_post_many_times(src_mat: np.ndarray, temp_mat: np.ndarray, max_try_times: int, threshold: float) -> list[tuple[float, typing.Sequence[int, int]]]:
         ...
     @staticmethod
     def match_template(src_mat: np.ndarray, temp_mat: np.ndarray) -> (np.ndarray, int):
@@ -244,4 +251,4 @@ def image_to_binary_arr(image: np.ndarray) -> np.ndarray:
     ...
 def main_loop(app: MainUI):
     ...
-this_process: psutil.Process  # value = psutil.Process(pid=25660, name='python.exe', status='running', started='16:39:26')
+this_process: psutil.Process  # value = psutil.Process(pid=13060, name='python.exe', status='running', started='09:11:23')
