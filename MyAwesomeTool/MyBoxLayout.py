@@ -170,11 +170,23 @@ class XmlTableUI(tk.Frame):
 
         self.__tree.bind("<<TreeviewSelect>>", self.__on_item_selected)
         self.__tree.bind("<Control-c>", self.__copy_selected)
+        self.__tree.bind("<Button-3>", self.__show_menu)
+
+        self.__menu = tk.Menu(self, tearoff=0)
+        self.__menu.add_command(label="复制", command=self.__copy_selected)
         self.__h_scrollbar = ttk.Scrollbar(self, orient=tk.HORIZONTAL, command=self.__tree.xview)
         self.__h_scrollbar.grid(row=1, column=0, sticky=tk.EW)
         self.__v_scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.__tree.yview)
         self.__v_scrollbar.grid(row=0, column=1, sticky=tk.NS)
         self.__tree.configure(xscrollcommand=self.__h_scrollbar.set, yscrollcommand=self.__v_scrollbar.set)
+
+    def __show_menu(self, event):
+        """右键弹出复制菜单，并选中点击所在的行"""
+        item = self.__tree.identify_row(event.y)
+        if item:
+            if item not in self.__tree.selection():
+                self.__tree.selection_set(item)
+            self.__menu.tk_popup(event.x_root, event.y_root)
 
     def __copy_selected(self, event=None):
         """复制所有选中节点的信息到剪贴板（多行文本）"""
