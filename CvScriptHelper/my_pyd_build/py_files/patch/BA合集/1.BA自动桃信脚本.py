@@ -115,7 +115,7 @@ DETAIL_SWIPE_FROM_PERCENT = (0.85, 0.70)
 DETAIL_SWIPE_TO_PERCENT = (0.85, 0.30)
 
 # 保底点击位置（屏幕左上角百分比）
-SAFE_CORNER_PERCENT = (0.19, 0.17)
+SAFE_CORNER_PERCENT = (0.19, 0.26)
 
 # 模板匹配阈值
 SCORE_THRESHOLD = 0.94
@@ -146,7 +146,7 @@ class BaScriptArranger(BaseScriptArranger):
         self.running_flag = False
         self.__is_debug = False
         self.student_debug_name = {}
-        self.statistic_all_student = True
+        self.statistic_all_student = False
         print("加载完毕")
 
     # ==========================================================================
@@ -247,7 +247,7 @@ class BaScriptArranger(BaseScriptArranger):
         temp = self.load_template(name)
         sub, rect = MyOpenCv.cut_picture_with_percent(img, percent_rect)
         score, loc = MyOpenCv.match_single_score_and_pos(sub, temp)
-        # self.show_debug("find_sub_template", MyOpenCv.show_single_match_pic(img, temp, score, tuple(loc)))
+        # self.show_debug("find_sub_template", MyOpenCv.show_single_match_pic(sub, temp, score, tuple(loc)))
         return score, (int(loc[0] + rect.left), int(loc[1] + rect.top))
 
     def click_absolute(self, loc_in_window: Tuple[int, int]):
@@ -296,6 +296,7 @@ class BaScriptArranger(BaseScriptArranger):
             time.sleep(0.01)
         dll.send_mouse_down(False)
         time.sleep(0.05)
+        time.sleep(0.5)
 
     def press_key(self, key_code: int):
         self.is_sending_key = True
@@ -524,7 +525,7 @@ class BaScriptArranger(BaseScriptArranger):
             self.observe_and_do("X有学生名记忆", "向上滑动列表; 超时加1; 点击左上角保底")
             # 5. 有学生名记忆：点击坐标 + 右侧向上滑动 + 按1和空格 + 超时 +1
             self.observe_and_do("有学生名记忆",
-                                "点击 学生名坐标; 向上滑动右侧; 按1和空格; 超时加4")
+                                "点击 学生名坐标; 向上滑动右侧; 向上滑动右侧; 按1和空格; 超时加4")
             # 9. 保底：点击左上角固定位置
             self.observe_and_do("默认观察", "点击左上角保底")
         except OverflowError:
